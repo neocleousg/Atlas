@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Σύνδεση{% endblock %}
+{% block content %}
+<div class="login card">
+  <h1>Σύνδεση</h1>
+  <p class="lead">Συνδεθείτε με τον λογαριασμό που σας έδωσε η ΑΑΕΚ.</p>
+  {% if form.errors %}<ul class="errorlist"><li>Λάθος όνομα χρήστη ή κωδικός.</li></ul>{% endif %}
+  <form method="post">{% csrf_token %}
+    <div class="form-row"><label for="id_username">Όνομα χρήστη</label>{{ form.username }}</div>
+    <div class="form-row"><label for="id_password">Κωδικός</label>{{ form.password }}</div>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button class="btn" type="submit">Σύνδεση</button>
+  </form>
+</div>
+{% endblock %}

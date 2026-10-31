@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Επεξεργασία προφίλ{% else %}Νέο πρόγραμμα{% endif %}{% endblock %}
+{% block content %}
+<p><a href="{% if object %}{% url 'programme_detail' object.pk %}{% else %}{% url 'programme_list' %}{% endif %}">← Πίσω</a></p>
+<h1>{% if object %}Επεξεργασία προφίλ{% else %}Νέο πρόγραμμα{% endif %}</h1>
+<p class="lead">Το προφίλ συμπληρώνεται μία φορά τον χρόνο, με τις ταξινομίες της Εθνικής Στρατηγικής 2021–2028.</p>
+<form method="post" novalidate>{% csrf_token %}
+  {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  <div class="card">
+    <h2 style="margin-top:0;font-size:17px">Ταυτότητα</h2>
+    {% include "core/_field.html" with field=form.title %}
+    {% include "core/_field.html" with field=form.school_year %}
+    {% include "core/_field.html" with field=form.level checks=1 %}
+    {% include "core/_field.html" with field=form.settings checks=1 %}
+    {% include "core/_field.html" with field=form.districts checks=1 %}
+    {% include "core/_field.html" with field=form.vulnerable_groups checks=1 %}
+    <div class="grid2">
+      {% include "core/_field.html" with field=form.age_from %}
+      {% include "core/_field.html" with field=form.age_to %}
+    </div>
+    {% include "core/_field.html" with field=form.trains_professionals %}
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0;font-size:17px">Λογικό μοντέλο</h2>
+    {% include "core/_field.html" with field=form.need %}
+    {% include "core/_field.html" with field=form.objectives %}
+    {% include "core/_field.html" with field=form.theory %}
+    {% include "core/_field.html" with field=form.planned_sessions %}
+    {% include "core/_field.html" with field=form.expected_outcomes %}
+  </div>
+  <button class="btn" type="submit">Αποθήκευση</button>
+</form>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ programme.title }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'programme_list' %}">← Προγράμματα</a></p>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
+  <div><h1>{{ programme.title }}</h1><p class="lead">{{ programme.organisation }} · {{ programme.school_year }}</p></div>
+  {% if can_edit %}<a class="btn ghost" href="{% url 'programme_update' programme.pk %}">Επεξεργασία προφίλ</a>{% endif %}
+</div>
+<div class="card">
+  <h2 style="margin-top:0;font-size:17px">Ταυτότητα</h2>
+  <dl>
+    <dt>Επίπεδο πρόληψης</dt><dd>{{ programme.get_level_display }}</dd>
+    <dt>Πλαίσια</dt><dd>{{ programme.settings.all|join:", " }}</dd>
+    <dt>Επαρχίες</dt><dd>{{ programme.districts.all|join:", " }}</dd>
+    <dt>Ευάλωτες ομάδες</dt><dd>{{ programme.vulnerable_groups.all|join:", "|default:"—" }}</dd>
+    <dt>Ηλικίες</dt><dd>{% if programme.age_from is not None %}{{ programme.age_from }}–{{ programme.age_to }} ετών{% else %}—{% endif %}</dd>
+    <dt>Εκπαίδευση επαγγελματιών</dt><dd>{{ programme.trains_professionals|yesno:"Ναι,Όχι" }}</dd>
+    <dt>Προγραμματισμένες συναντήσεις</dt><dd>{{ programme.planned_sessions }} ανά ομάδα</dd>
+  </dl>
+</div>
+<div class="card">
+  <h2 style="margin-top:0;font-size:17px">Λογικό μοντέλο</h2>
+  <dl>
+    <dt>Ανάγκη</dt><dd>{{ programme.need }}</dd>
+    <dt>Στόχοι</dt><dd>{{ programme.objectives }}</dd>
+    <dt>Θεωρητική βάση</dt><dd>{{ programme.theory|default:"—" }}</dd>
+    <dt>Αναμενόμενα αποτελέσματα</dt><dd>{{ programme.expected_outcomes }}</dd>
+  </dl>
+</div>
+<p class="help">Τελευταία ενημέρωση: {{ programme.updated_at|date:"d/m/Y H:i" }}</p>
+{% endblock %}
