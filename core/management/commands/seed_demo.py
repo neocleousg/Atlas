@@ -17,6 +17,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--force", action="store_true", help="Εκτέλεση ακόμα και με DEBUG=0.")
+        parser.add_argument("--out", help="Αποθήκευση των κωδικών και σε αρχείο κειμένου (τοπικά).")
 
     def handle(self, *args, **opts):
         if not settings.DEBUG and not opts["force"]:
@@ -64,3 +65,10 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Εικονικά δεδομένα έτοιμα. Κωδικοί (εμφανίζονται μόνο τώρα):"))
         for u, pw in creds:
             self.stdout.write(f"  {u:10s} {pw}")
+        if opts.get("out"):
+            labels = {"foreas_a": "Χρήστης Φορέα Α", "foreas_b": "Χρήστης Φορέα Β", "aaek": "Χρήστης ΑΑΕΚ"}
+            with open(opts["out"], "w", encoding="utf-8") as f:
+                f.write("ΑΤΛΑΣ - κωδικοί δοκιμής (εικονικοί χρήστες, μόνο για τον υπολογιστή σας)\n\n")
+                for u, pw in creds:
+                    f.write(f"{labels[u]}\n  Όνομα χρήστη: {u}\n  Κωδικός:      {pw}\n\n")
+                f.write("Διεύθυνση: http://127.0.0.1:8000\n")
