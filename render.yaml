@@ -1,15 +1,20 @@
-# ΑΤΛΑΣ στο Render: δοκιμαστική εκδοχή με εικονικά δεδομένα.
+# ΑΤΛΑΣ στο Render: ΔΩΡΕΑΝ δοκιμαστική εκδοχή με εικονικά δεδομένα.
 # Οδηγίες βήμα-βήμα: docs/RENDER.md
 #
-# Server και βάση στη Φρανκφούρτη (ΕΕ). Το Render ενημερώνει μόνο του την εφαρμογή
-# σε κάθε αλλαγή του main.
+# Πώς δουλεύει το δωρεάν πακέτο, και γιατί μας βολεύει:
+# - «Κοιμάται» μετά από ~15 λεπτά χωρίς επισκέπτες και ξυπνά σε ~1 λεπτό.
+# - Δεν κρατά αρχεία: σε κάθε ξύπνημα η βάση (SQLite) είναι άδεια, και ο ΑΤΛΑΣ φτιάχνει μόνος του
+#   φρέσκα εικονικά δεδομένα με τη σημερινή ημερομηνία. Δηλαδή αυτόματη επαναφορά, χωρίς κόστος.
+# - Καμία βάση PostgreSQL: η δωρεάν του Render λήγει μετά από λίγες εβδομάδες.
+#
+# Για το πιλοτικό με πραγματικά δεδομένα ΔΕΝ είναι κατάλληλο (χάνει τα δεδομένα).
 
 services:
   - type: web
     name: atlas
     runtime: python
     region: frankfurt
-    plan: starter            # Το δωρεάν πακέτο «κοιμάται» και αργεί να ξυπνήσει: όχι για συνάντηση.
+    plan: free
     branch: main
     autoDeploy: true
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
@@ -21,10 +26,6 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.8"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: atlas-db
-          property: connectionString
       - key: DJANGO_SECRET_KEY
         generateValue: true
       - key: DJANGO_DEBUG
@@ -42,12 +43,3 @@ services:
         sync: false
       - key: ATLAS_DEMO_PASSWORD
         sync: false
-
-databases:
-  - name: atlas-db
-    databaseName: atlas
-    user: atlas
-    region: frankfurt
-    plan: basic-256mb
-    postgresMajorVersion: "16"
-    ipAllowList: []          # Καμία πρόσβαση στη βάση από το internet: μόνο από την εφαρμογή.
