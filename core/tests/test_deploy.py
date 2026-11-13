@@ -76,3 +76,53 @@ class DemoBannerTests(TestCase):
 
     def test_no_banner_normally(self):
         self.assertNotContains(self.client.get(reverse("login")), "εικονικά δεδομένα")
+
+
+class DemoResetTests(TestCase):
+    URL = "demo_reset"
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser("greg", None, GOOD)
+        self.aaek = User.objects.create_user("aaek_x", password=GOOD, role=Role.AAEK)
+
+    @override_settings(DEMO_MODE=True)
+    def test_superuser_resets_to_fresh_data(self):
+        with mock.patch.dict(os.environ, {"ATLAS_DEMO_PASSWORD": GOOD}):
+            call_command("seed_demo", force=True, password=GOOD, stdout=StringIO())
+            from core.models import Period, Programme
+            p = Programme.objects.get(title="Πυξίδα")
+            p.declarations.all().delete()  # σαν να δήλωσε κάποιος, ή να άλλαξε κάτι
+            Declaration.objects.filter(programme__title="Φάρος").update(note="δοκιμή της ΑΑΕΚ")
+            self.client.force_login(self.admin)
+            r = self.client.get(reverse("aaek_dashboard"))
+            self.assertContains(r, "Επαναφορά εικονικών δεδομένων")
+            r = self.client.post(reverse(self.URL), follow=True)
+        self.assertContains(r, "ξαναδημιουργήθηκαν")
+        self.assertFalse(Declaration.objects.filter(note="δοκιμή της ΑΑΕΚ").exists())
+        latest = Period.to_declare()
+        self.assertEqual(Declaration.objects.filter(period=latest).count(), 3)  # 2 εκκρεμούν, όπως στο demo
+        self.assertTrue(User.objects.filter(username="greg").exists())
+        self.assertTrue(User.objects.get(username="foreas_a").check_password(GOOD))
+
+    @override_settings(DEMO_MODE=True)
+    def test_aaek_user_cannot_reset(self):
+        self.client.force_login(self.aaek)
+        self.assertNotContains(self.client.get(reverse("aaek_dashboard")), "Επαναφορά εικονικών δεδομένων")
+        self.assertEqual(self.client.post(reverse(self.URL)).status_code, 403)
+
+    def test_never_outside_demo(self):
+        self.client.force_login(self.admin)
+        self.assertNotContains(self.client.get(reverse("aaek_dashboard")), "Επαναφορά εικονικών δεδομένων")
+        self.assertEqual(self.client.post(reverse(self.URL)).status_code, 403)
+
+    @override_settings(DEMO_MODE=True)
+    def test_missing_password_reports_error(self):
+        self.client.force_login(self.admin)
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("ATLAS_DEMO_PASSWORD", None)
+            r = self.client.post(reverse(self.URL), follow=True)
+        self.assertContains(r, "Λείπει ο κωδικός demo")
+
+    def test_get_not_allowed(self):
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get(reverse(self.URL)).status_code, 405)

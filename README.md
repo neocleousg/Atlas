@@ -21,6 +21,7 @@
 ## Online δοκιμαστική εκδοχή (Render)
 
 Βήμα-βήμα οδηγός: [docs/RENDER.md](docs/RENDER.md). Εικονικά δεδομένα, server στην ΕΕ.
+Παρουσίαση στην ΑΑΕΚ: [docs/PAROUSIASI.md](docs/PAROUSIASI.md).
 
 ## Δοκιμή σε υπολογιστή Windows (χωρίς τεχνικές γνώσεις)
 

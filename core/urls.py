@@ -10,4 +10,5 @@ urlpatterns = [
     path("programmata/<int:pk>/dilosi/<int:step>/", views.DeclarationView.as_view(), name="declaration"),
     path("aaek/", views.AaekDashboardView.as_view(), name="aaek_dashboard"),
     path("aaek/exagogi.csv", views.AaekExportView.as_view(), name="aaek_export"),
+    path("aaek/demo-epanafora/", views.DemoResetView.as_view(), name="demo_reset"),
 ]

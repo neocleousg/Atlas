@@ -393,6 +393,25 @@ class AaekDashboardView(AaekRequiredMixin, TemplateView):
                 "incomplete": any(g["n"] < g["of"] for g in groups)}
 
 
+class DemoResetView(AaekRequiredMixin, View):
+    """Κουμπί «Επαναφορά εικονικών δεδομένων». Μόνο για τη Διαχείριση, μόνο στη δοκιμαστική εκδοχή."""
+
+    def post(self, request):
+        from django.conf import settings
+
+        from .demo import DemoResetError, reset_demo_data
+
+        if not (request.user.is_superuser and settings.DEMO_MODE):
+            raise PermissionDenied
+        try:
+            reset_demo_data()
+        except DemoResetError as e:
+            messages.error(request, str(e))
+        else:
+            messages.success(request, "Τα εικονικά δεδομένα ξαναδημιουργήθηκαν με τη σημερινή ημερομηνία.")
+        return redirect("aaek_dashboard")
+
+
 class AaekExportView(AaekDashboardView):
     """CSV για Excel/Power BI. Ίδια απόκρυψη με την οθόνη."""
 

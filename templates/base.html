@@ -21,7 +21,7 @@
   {% endif %}
 </div></header>
 <main id="main" class="{% block main_class %}{% endblock %}">
-{% for m in messages %}<div class="msg" role="status">{{ m }}</div>{% endfor %}
+{% for m in messages %}<div class="msg{% if m.tags == 'error' %} err{% endif %}" role="status">{{ m }}</div>{% endfor %}
 {% block content %}{% endblock %}
 </main>
 </body>

@@ -5,6 +5,13 @@
   <div class="eyebrow">Λειτουργός ΑΑΕΚ</div>
   <h1>Προγράμματα πρόληψης ανά τετραμηνία</h1>
 </div>
+{% if DEMO_MODE and user.is_superuser %}
+<form method="post" action="{% url 'demo_reset' %}" class="card split" style="border-style:dashed"
+      onsubmit="return confirm('Να σβηστούν όλες οι δηλώσεις και να ξαναδημιουργηθούν τα εικονικά δεδομένα;')">{% csrf_token %}
+  <span class="small"><b>Πριν από παρουσίαση:</b> φρέσκα εικονικά δεδομένα με τη σημερινή ημερομηνία. Σβήνει ό,τι δοκίμασαν άλλοι. Το βλέπετε μόνο εσείς.</span>
+  <button class="btn ghost" type="submit">Επαναφορά εικονικών δεδομένων</button>
+</form>
+{% endif %}
 
 <form class="card bar" method="get">
   <label>Τετραμηνία<select name="per">{% for x in periods %}<option value="{{ x.pk }}"{% if x.pk == period.pk %} selected{% endif %}>{{ x.label }}</option>{% endfor %}</select></label>
