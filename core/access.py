@@ -1,7 +1,11 @@
 """
-Κανόνες πρόσβασης. ΟΛΗ η πρόσβαση σε δεδομένα προγραμμάτων περνά από εδώ.
+Κανόνες πρόσβασης. ΟΛΗ η πρόσβαση σε προγράμματα και δηλώσεις περνά από εδώ.
 
-Αρχή: ένας χρήστης φορέα δεν μπορεί ποτέ να δει ή να αλλάξει δεδομένα άλλου φορέα.
+- Λειτουργός φορέα: βλέπει και δηλώνει ΜΟΝΟ τα προγράμματα που του έχουν ανατεθεί.
+  Ποτέ προγράμματα άλλου λειτουργού, πόσο μάλλον άλλου φορέα.
+- ΑΑΕΚ: βλέπει όλα, δεν δηλώνει.
+- Ανενεργός φορέας ή ανενεργό πρόγραμμα: καμία πρόσβαση για τον φορέα.
+
 Οι κανόνες ελέγχονται αυτόματα στο core/tests/test_access.py.
 """
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -10,19 +14,7 @@ from django.core.exceptions import PermissionDenied
 from .models import Programme
 
 
-def visible_programmes(user):
-    """Τα προγράμματα που επιτρέπεται να δει ο χρήστης."""
-    qs = Programme.objects.select_related("organisation")
-    if not user.is_authenticated or not user.is_active:
-        return qs.none()
-    if getattr(user, "is_aaek_user", False):
-        return qs
-    if getattr(user, "is_organisation_user", False):
-        return qs.filter(organisation_id=user.organisation_id, organisation__is_active=True)
-    return qs.none()
-
-
-def can_create_programme(user):
+def is_officer(user):
     return (
         user.is_authenticated
         and user.is_active
@@ -31,14 +23,31 @@ def can_create_programme(user):
     )
 
 
-def can_edit_programme(user, programme):
-    return can_create_programme(user) and programme.organisation_id == user.organisation_id
+def is_aaek(user):
+    return user.is_authenticated and user.is_active and getattr(user, "is_aaek_user", False)
 
 
-class OrganisationUserRequiredMixin(LoginRequiredMixin):
-    """Μόνο ενεργοί χρήστες ενεργού φορέα. Η ΑΑΕΚ δεν καταχωρίζει δεδομένα φορέων."""
+def officer_programmes(user):
+    """Τα προγράμματα που ο λειτουργός δηλώνει."""
+    if not is_officer(user):
+        return Programme.objects.none()
+    return Programme.objects.select_related("organisation", "district", "setting").filter(
+        officer=user,
+        organisation_id=user.organisation_id,
+        organisation__is_active=True,
+        is_active=True,
+    )
 
+
+class OfficerRequiredMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated and not can_create_programme(request.user):
+        if request.user.is_authenticated and not is_officer(request.user):
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
+
+
+class AaekRequiredMixin(LoginRequiredMixin):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not is_aaek(request.user):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)

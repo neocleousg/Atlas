@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Δεν επιτρέπεται{% endblock %}
+{% block content %}
+<div class="login card">
+  <h1>Δεν επιτρέπεται</h1>
+  <p class="lead">Ο λογαριασμός σας δεν έχει δικαίωμα για αυτή την ενέργεια.</p>
+  <a class="btn" href="{% url 'home' %}">Αρχική</a>
+</div>
+{% endblock %}

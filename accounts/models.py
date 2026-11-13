@@ -63,3 +63,24 @@ class User(AbstractUser):
     @property
     def is_aaek_user(self):
         return self.role == Role.AAEK
+
+
+class LoginAttempt(models.Model):
+    """
+    Μία προσπάθεια σύνδεσης. Χρησιμοποιείται για τον περιορισμό αποπειρών (accounts/throttle.py).
+    Η διεύθυνση IP είναι προσωπικό δεδομένο: οι εγγραφές διαγράφονται αυτόματα μετά από
+    LOGIN_ATTEMPT_RETENTION_DAYS ημέρες.
+    """
+
+    username = models.CharField("Όνομα χρήστη", max_length=150, db_index=True)
+    ip_address = models.GenericIPAddressField("Διεύθυνση IP", null=True, blank=True, db_index=True)
+    successful = models.BooleanField("Επιτυχής", default=False)
+    created_at = models.DateTimeField("Χρόνος", auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Προσπάθεια σύνδεσης"
+        verbose_name_plural = "Προσπάθειες σύνδεσης"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.username} · {self.ip_address or '—'} · {'επιτυχής' if self.successful else 'αποτυχία'}"

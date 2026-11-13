@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Δήλωση {{ period.label }} · {{ p.title }}{% endblock %}
+{% block main_class %}narrow{% endblock %}
+{% block content %}
+<div class="head">
+  <div class="eyebrow">Βήμα {{ step }} από 4{% if existing %} · Διόρθωση{% endif %}</div>
+  <h1>{{ period.label }} · «{{ p.title }}»</h1>
+  <ol class="steps" aria-hidden="true">{% for s in steps %}<li{% if s <= step %} class="on"{% endif %}></li>{% endfor %}</ol>
+</div>
+<form method="post" class="card stepform" novalidate>{% csrf_token %}
+{% if form.non_field_errors %}<div class="err" role="alert">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
+
+{% if step == 1 %}
+  <h2>Πόσοι ήρθαν στο πρόγραμμα;</h2>
+  {% if first %}
+    {% include "core/_num.html" with f=form.open_start %}
+  {% else %}
+    <div class="auto"><span>Ανοικτές περιπτώσεις από προηγούμενη τετραμηνία<br><span class="small muted">Συμπληρώνεται αυτόματα</span></span><b class="num">{{ draft.open_start }}</b></div>
+  {% endif %}
+  {% include "core/_num.html" with f=form.new %}
+
+{% elif step == 2 %}
+  <h2>Τι έγινε μέσα στην τετραμηνία;</h2>
+  <p class="muted">Συνολικά εξυπηρετήθηκαν <b class="num" id="served" data-v="{{ served }}">{{ served }}</b> άτομα ({{ draft.open_start }} ανοικτές περιπτώσεις + {{ draft.new }} νέοι).</p>
+  {% include "core/_num.html" with f=form.completed %}
+  {% include "core/_num.html" with f=form.withdrawn %}
+  <div class="result"><span>Ανοικτές περιπτώσεις τέλους τετραμηνίας<br><span class="small muted">Υπολογίζεται αυτόματα</span></span><b class="num" id="end">—</b></div>
+
+{% elif step == 3 %}
+  <h2>Ποιοι ήταν οι νέοι; <span class="small muted" style="font-weight:400">(προαιρετικό)</span></h2>
+  <p class="muted">Αν δεν έχετε αυτά τα στοιχεία, πατήστε «Συνέχεια». Τα σύνολα πρέπει να είναι {{ draft.new }}.</p>
+  <div class="field"><span class="lbl">Κατά φύλο</span>
+    <div class="grid3">{% for f in form.sex_fields %}{% include "core/_num.html" with f=f small=1 %}{% endfor %}</div></div>
+  <div class="field"><span class="lbl">Κατά ηλικία</span>
+    {% if form.target_age_fields %}<span class="hint">Κύρια ομάδα-στόχος του προγράμματος</span>
+    <div class="grid3">{% for f in form.target_age_fields %}{% include "core/_num.html" with f=f small=1 %}{% endfor %}</div>
+    <span class="hint" style="margin-top:8px">Άλλες ηλικίες (αν εξυπηρετήσατε άτομα εκτός της κύριας ομάδας-στόχου)</span>{% endif %}
+    <div class="grid3">{% for f in form.other_age_fields %}{% include "core/_num.html" with f=f small=1 %}{% endfor %}</div></div>
+  {% include "core/_num.html" with f=form.note %}
+
+{% else %}
+  <h2>Έλεγχος και υποβολή</h2>
+  <div class="summary">
+    <span class="k">Ανοικτές περιπτώσεις από προηγούμενη τετραμηνία</span><span class="v">{{ draft.open_start }}</span>
+    <span class="k">Νέοι εξυπηρετούμενοι</span><span class="v">+ {{ draft.new }}</span>
+    <span class="k">Ολοκλήρωσαν</span><span class="v">− {{ draft.completed }}</span>
+    <span class="k">Αποχώρησαν</span><span class="v">− {{ draft.withdrawn }}</span>
+    <span class="k tot"><b>Ανοικτές περιπτώσεις τέλους τετραμηνίας</b></span><span class="v tot">{{ open_end }}</span>
+  </div>
+  <p class="small muted">{% if draft.sex or draft.ages %}Συμπληρώσατε και {% if draft.sex %}φύλο{% endif %}{% if draft.sex and draft.ages %}/{% endif %}{% if draft.ages %}ηλικία{% endif %} των νέων.{% else %}Δεν συμπληρώσατε φύλο/ηλικία (προαιρετικό).{% endif %}{% if draft.note %} Προσθέσατε σχόλιο.{% endif %}</p>
+  <p class="small muted">Η ΑΑΕΚ βλέπει μόνο αριθμούς. Δεν καταχωρίζεται κανένα όνομα ή προσωπικό στοιχείο.</p>
+{% endif %}
+
+  <div class="nav">
+    {# Πρώτα το κύριο κουμπί: το Enter σε ένα πεδίο πατά το πρώτο κουμπί της φόρμας. #}
+    <button class="btn big" type="submit">{% if step == 4 %}Υποβολή στην ΑΑΕΚ{% else %}Συνέχεια{% endif %}</button>
+    <button class="btn ghost" type="submit" name="back" value="1" formnovalidate>{% if step == 1 %}Ακύρωση{% else %}Πίσω{% endif %}</button>
+  </div>
+</form>
+{% if step == 2 %}
+<script>
+(function(){
+  var s=+document.getElementById("served").dataset.v,c=document.getElementById("id_completed"),w=document.getElementById("id_withdrawn"),e=document.getElementById("end");
+  function n(x){var v=x.value.trim();return /^\d+$/.test(v)?+v:0}
+  function upd(){var r=s-n(c)-n(w);e.textContent=r<0?"—":r}
+  c.addEventListener("input",upd);w.addEventListener("input",upd);upd();
+})();
+</script>
+{% endif %}
+{% endblock %}
