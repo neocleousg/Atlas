@@ -5,7 +5,15 @@
 <h1>{% if object %}Επεξεργασία προφίλ{% else %}Νέο πρόγραμμα{% endif %}</h1>
 <p class="lead">Το προφίλ συμπληρώνεται μία φορά τον χρόνο, με τις ταξινομίες της Εθνικής Στρατηγικής 2021–2028.</p>
 <form method="post" novalidate>{% csrf_token %}
-  {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  {% if form.errors %}
+  <div class="errorbox" role="alert" tabindex="-1" id="errors">
+    <strong>Η φόρμα δεν αποθηκεύτηκε. Διορθώστε τα παρακάτω:</strong>
+    <ul>
+      {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+      {% for field in form %}{% for e in field.errors %}<li><a href="#{{ field.id_for_label|default:field.auto_id }}">{{ field.label }}</a>: {{ e }}</li>{% endfor %}{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
   <div class="card">
     <h2 style="margin-top:0;font-size:17px">Ταυτότητα</h2>
     {% include "core/_field.html" with field=form.title %}

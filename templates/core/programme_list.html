@@ -15,25 +15,28 @@
   <label>Επίπεδο<select name="level"><option value="">Όλα</option>{% for v,l in filters.levels %}<option value="{{ v }}" {% if filters.current.level == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
   <label>Επαρχία<select name="district"><option value="">Όλες</option>{% for d in filters.districts %}<option value="{{ d.pk }}" {% if filters.current.district == d.pk|stringformat:"s" %}selected{% endif %}>{{ d }}</option>{% endfor %}</select></label>
   <label>Πλαίσιο<select name="setting"><option value="">Όλα</option>{% for s in filters.settings %}<option value="{{ s.pk }}" {% if filters.current.setting == s.pk|stringformat:"s" %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+  <label>Περίοδος<select name="school_year"><option value="">Όλες</option>{% for y in filters.school_years %}<option value="{{ y }}" {% if filters.current.school_year == y %}selected{% endif %}>{{ y }}</option>{% endfor %}</select></label>
   <button class="btn ghost" type="submit">Εφαρμογή</button>
+  {% if is_filtered %}<a href="{% url 'programme_list' %}">Καθαρισμός</a>{% endif %}
 </form>
 {% endif %}
 
 <div class="tablewrap">
 <table>
+  <caption class="sr">{{ programmes|length }} προγράμματα</caption>
   <thead><tr><th>Πρόγραμμα</th>{% if user.is_aaek_user %}<th>Φορέας</th>{% endif %}<th>Περίοδος</th><th>Επίπεδο</th><th>Πλαίσια</th><th>Επαρχίες</th></tr></thead>
   <tbody>
   {% for p in programmes %}
     <tr>
       <td><a href="{% url 'programme_detail' p.pk %}">{{ p.title }}</a></td>
       {% if user.is_aaek_user %}<td>{{ p.organisation }}</td>{% endif %}
-      <td>{{ p.school_year }}</td>
+      <td class="nowrap">{{ p.school_year }}</td>
       <td>{{ p.get_level_display }}</td>
       <td>{{ p.settings.all|join:", " }}</td>
       <td>{{ p.districts.all|join:", " }}</td>
     </tr>
   {% empty %}
-    <tr><td colspan="6" class="empty">{% if can_create %}Δεν έχετε ακόμα καταχωρίσει πρόγραμμα. Ξεκινήστε με «Νέο πρόγραμμα».{% else %}Δεν βρέθηκαν προγράμματα.{% endif %}</td></tr>
+    <tr><td colspan="6" class="empty">{% if can_create %}Δεν έχετε ακόμα καταχωρίσει πρόγραμμα. Ξεκινήστε με «Νέο πρόγραμμα».{% elif is_filtered %}Κανένα πρόγραμμα δεν ταιριάζει με τα φίλτρα.{% else %}Δεν βρέθηκαν προγράμματα.{% endif %}</td></tr>
   {% endfor %}
   </tbody>
 </table>

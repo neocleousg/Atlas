@@ -1,6 +1,7 @@
 from django import forms
 
 from .models import PreventionLevel, Programme
+from .validators import normalise_school_year
 
 
 class ProgrammeForm(forms.ModelForm):
@@ -39,6 +40,14 @@ class ProgrammeForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self._organisation = organisation
         self.fields["level"].choices = PreventionLevel.choices  # χωρίς κενή επιλογή «---------»
+        self.fields["school_year"].widget.attrs.update({"placeholder": "2026–27", "inputmode": "numeric"})
+
+    def clean_school_year(self):
+        # 2026-27, 2026/27 κ.λπ. γίνονται 2026–27, ώστε να μη διασπώνται τα στατιστικά ανά περίοδο.
+        return normalise_school_year(self.cleaned_data.get("school_year"))
+
+    def clean_title(self):
+        return " ".join((self.cleaned_data.get("title") or "").split())
 
     def clean(self):
         cleaned = super().clean()

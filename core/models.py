@@ -6,7 +6,10 @@
 """
 from django.conf import settings as django_settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+
+from .validators import validate_school_year
 
 
 class Organisation(models.Model):
@@ -70,15 +73,21 @@ class Programme(models.Model):
         Organisation, on_delete=models.PROTECT, related_name="programmes", verbose_name="Φορέας"
     )
     title = models.CharField("Τίτλος προγράμματος", max_length=200)
-    school_year = models.CharField("Περίοδος υλοποίησης", max_length=20, help_text="π.χ. 2026–27")
+    school_year = models.CharField(
+        "Περίοδος υλοποίησης", max_length=20, validators=[validate_school_year], help_text="π.χ. 2026–27"
+    )
     level = models.CharField("Επίπεδο πρόληψης", max_length=20, choices=PreventionLevel.choices)
     settings = models.ManyToManyField(Setting, verbose_name="Πλαίσια", related_name="programmes")
     districts = models.ManyToManyField(District, verbose_name="Επαρχίες", related_name="programmes")
     vulnerable_groups = models.ManyToManyField(
         VulnerableGroup, verbose_name="Ευάλωτες ομάδες", related_name="programmes", blank=True
     )
-    age_from = models.PositiveSmallIntegerField("Ηλικία από", null=True, blank=True)
-    age_to = models.PositiveSmallIntegerField("Ηλικία έως", null=True, blank=True)
+    age_from = models.PositiveSmallIntegerField(
+        "Ηλικία από", null=True, blank=True, validators=[MaxValueValidator(99)]
+    )
+    age_to = models.PositiveSmallIntegerField(
+        "Ηλικία έως", null=True, blank=True, validators=[MaxValueValidator(99)]
+    )
     trains_professionals = models.BooleanField(
         "Εκπαιδεύει επαγγελματίες για να εφαρμόσουν το πρόγραμμα",
         default=False,
@@ -88,7 +97,9 @@ class Programme(models.Model):
     need = models.TextField("Ανάγκη που καλύπτει")
     objectives = models.TextField("Στόχοι")
     theory = models.TextField("Θεωρητική βάση", blank=True)
-    planned_sessions = models.PositiveSmallIntegerField("Προγραμματισμένες συναντήσεις ανά ομάδα")
+    planned_sessions = models.PositiveSmallIntegerField(
+        "Προγραμματισμένες συναντήσεις ανά ομάδα", validators=[MinValueValidator(1), MaxValueValidator(200)]
+    )
     expected_outcomes = models.TextField("Αναμενόμενα αποτελέσματα")
 
     created_at = models.DateTimeField(auto_now_add=True)

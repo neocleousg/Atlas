@@ -7,19 +7,21 @@
 <link rel="stylesheet" href="{% static 'css/atlas.css' %}">
 </head>
 <body>
+<a class="skip" href="#main">Μετάβαση στο περιεχόμενο</a>
 <header class="top"><div class="in">
   <a class="brand" href="{% url 'home' %}">ΑΤΛΑΣ<small>Παρακολούθηση και αξιολόγηση προληπτικών προγραμμάτων</small></a>
   {% if user.is_authenticated %}
   <div class="who">
     {% if user.is_aaek_user %}<span class="chip aaek">ΑΑΕΚ</span>{% elif user.organisation %}<span class="chip">{{ user.organisation }}</span>{% endif %}
     <span>{{ user.get_full_name|default:user.username }}</span>
+    <a href="{% url 'password_change' %}">Κωδικός</a>
     {% if user.is_staff %}<a href="{% url 'admin:index' %}">Διαχείριση</a>{% endif %}
     <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="linkbtn" type="submit">Αποσύνδεση</button></form>
   </div>
   {% endif %}
 </div></header>
-<main>
-{% for m in messages %}<div class="msg">{{ m }}</div>{% endfor %}
+<main id="main">
+{% for m in messages %}<div class="msg" role="status">{{ m }}</div>{% endfor %}
 {% block content %}{% endblock %}
 </main>
 </body>

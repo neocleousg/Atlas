@@ -7,7 +7,13 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from .access import OrganisationUserRequiredMixin, can_create_programme, can_edit_programme, visible_programmes
 from .forms import ProgrammeForm
-from .models import District, Organisation, PreventionLevel, Setting
+from .models import District, Organisation, PreventionLevel, Programme, Setting
+
+
+def _int_param(params, name):
+    """Ακέραιος από το query string, ή None αν λείπει ή είναι άκυρος (ποτέ σφάλμα 500)."""
+    value = params.get(name, "").strip()
+    return int(value) if value.isdigit() else None
 
 
 def home(request):
@@ -24,14 +30,16 @@ class ProgrammeListView(LoginRequiredMixin, ListView):
         qs = visible_programmes(self.request.user).prefetch_related("districts", "settings")
         if self.request.user.is_aaek_user:
             g = self.request.GET
-            if g.get("organisation"):
-                qs = qs.filter(organisation_id=g["organisation"])
-            if g.get("level"):
+            if (org := _int_param(g, "organisation")) is not None:
+                qs = qs.filter(organisation_id=org)
+            if g.get("level") in PreventionLevel.values:
                 qs = qs.filter(level=g["level"])
-            if g.get("district"):
-                qs = qs.filter(districts__id=g["district"])
-            if g.get("setting"):
-                qs = qs.filter(settings__id=g["setting"])
+            if (district := _int_param(g, "district")) is not None:
+                qs = qs.filter(districts__id=district)
+            if (setting := _int_param(g, "setting")) is not None:
+                qs = qs.filter(settings__id=setting)
+            if g.get("school_year"):
+                qs = qs.filter(school_year=g["school_year"])
             qs = qs.distinct()
         return qs
 
@@ -44,8 +52,14 @@ class ProgrammeListView(LoginRequiredMixin, ListView):
                 "levels": PreventionLevel.choices,
                 "districts": District.objects.all(),
                 "settings": Setting.objects.all(),
+                "school_years": Programme.objects.order_by("-school_year")
+                .values_list("school_year", flat=True)
+                .distinct(),
                 "current": self.request.GET,
             }
+            ctx["is_filtered"] = any(
+                self.request.GET.get(k) for k in ("organisation", "level", "district", "setting", "school_year")
+            )
         return ctx
 
 

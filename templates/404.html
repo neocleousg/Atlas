@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Η σελίδα δεν βρέθηκε{% endblock %}
+{% block content %}
+<div class="login card">
+  <h1>Η σελίδα δεν βρέθηκε</h1>
+  <p class="lead">Η σελίδα δεν υπάρχει ή δεν έχετε πρόσβαση σε αυτήν.</p>
+  <a class="btn" href="{% url 'home' %}">Αρχική</a>
+</div>
+{% endblock %}
