@@ -2,11 +2,12 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
-from accounts.forms import AtlasAuthenticationForm
+from accounts.forms import AtlasAdminAuthenticationForm, AtlasAuthenticationForm
 
 admin.site.site_header = "ΑΤΛΑΣ · Διαχείριση"
 admin.site.site_title = "ΑΤΛΑΣ"
 admin.site.index_title = "Φορείς, χρήστες και ταξινομίες"
+admin.site.login_form = AtlasAdminAuthenticationForm
 
 urlpatterns = [
     path("diaxeirisi/", admin.site.urls),

@@ -138,6 +138,15 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", "31536000"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
+# --- Περιορισμός αποπειρών σύνδεσης (accounts/throttle.py) ---
+LOGIN_LOCK_WINDOW_MINUTES = int(os.environ.get("ATLAS_LOGIN_LOCK_MINUTES", "15"))
+LOGIN_LOCK_USER_IP_LIMIT = 5    # ίδιο όνομα + ίδια IP
+LOGIN_LOCK_IP_LIMIT = 20        # ίδια IP, οποιοδήποτε όνομα
+LOGIN_LOCK_USER_LIMIT = 30      # ίδιο όνομα, οποιαδήποτε IP
+LOGIN_ATTEMPT_RETENTION_DAYS = 30
+# Πλήθος reverse proxies μπροστά από την εφαρμογή (π.χ. 1 για nginx). 0 = αγνόησε το X-Forwarded-For.
+TRUSTED_PROXY_COUNT = int(os.environ.get("DJANGO_TRUSTED_PROXIES", "0"))
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
