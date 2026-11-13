@@ -1,11 +1,16 @@
 """
-Σύνολα για τον πίνακα της ΑΑΕΚ και απόκρυψη μικρών τιμών.
+Σύνολα για τον πίνακα της ΑΑΕΚ και προστασία μικρών τιμών.
 
-Απόκρυψη (αρχή 3 της πρότασης):
-- Πρωτογενής: κάθε τιμή 1–4 σε φύλο/ηλικία κρύβεται.
-- Δευτερογενής: το σύνολο (νέοι) είναι πάντα ορατό. Αν κρυφτεί μόνο ένα κελί, βγαίνει με
-  αφαίρεση από το σύνολο. Γι' αυτό κρύβεται και το μικρότερο από τα υπόλοιπα κελιά.
-Ισχύει σε οθόνη ΚΑΙ σε εξαγωγές.
+Προστασία (αρχή 3 της πρότασης): καμία τιμή 1–4 σε φύλο/ηλικία δεν εμφανίζεται.
+Αντί να κρύβουμε κελιά (που θα έκρυβε και μεγάλες τιμές, π.χ. «Κορίτσια 126» επειδή «Άλλο» = 3),
+ΕΝΩΝΟΥΜΕ το μικρό κελί με ένα γειτονικό:
+- φύλο: με τη μικρότερη άλλη κατηγορία (π.χ. «Κορίτσια / γυναίκες + άλλο: 129»),
+- ηλικία: με διπλανή ηλικιακή ομάδα (π.χ. «13–18: 107»).
+Επαναλαμβάνεται μέχρι να μη μείνει κανένα μικρό σύνολο. Αν δεν γίνεται, όλα κρύβονται.
+
+Οθόνη ΚΑΙ CSV χρησιμοποιούν την ΙΔΙΑ ομαδοποίηση: το CSV δείχνει μόνο όσα κελιά έμειναν
+μόνα τους, και «×» για κάθε κελί που ενώθηκε. Έτσι ο συνδυασμός οθόνης και CSV δεν
+αποκαλύπτει τίποτα παραπάνω.
 """
 from dataclasses import dataclass, field
 from statistics import median
@@ -14,20 +19,55 @@ HIDDEN = "×"
 SMALL = 5
 
 
-def suppress(values):
+def protect(values, ordinal=False):
     """
-    values: λίστα ακεραίων (ένα σπάσιμο, π.χ. φύλο). Επιστρέφει λίστα με ακέραιους ή HIDDEN.
-    None (δεν δηλώθηκε) → None.
+    values: λίστα ακεραίων ενός σπασίματος (π.χ. φύλο ή ηλικίες με τη σειρά τους).
+    Επιστρέφει ομάδες: [{"idx": [δείκτες], "v": άθροισμα ή HIDDEN}], με τη σειρά των δεικτών.
     """
     if values is None:
         return None
-    out = list(values)
-    hidden = {i for i, v in enumerate(values) if 0 < v < SMALL}
-    if len(hidden) == 1 and len(values) > 1:
-        rest = sorted((v, i) for i, v in enumerate(values) if i not in hidden)
-        hidden.add(rest[0][1])
-    for i in hidden:
-        out[i] = HIDDEN
+    groups = [[i] for i in range(len(values))]
+
+    def total(g):
+        return sum(values[i] for i in g)
+
+    def small(g):
+        return 0 < total(g) < SMALL
+
+    while True:
+        smalls = [g for g in groups if small(g)]
+        if not smalls:
+            return [{"idx": g, "v": total(g)} for g in groups]
+        g = min(smalls, key=total)
+        pos = groups.index(g)
+        if len(groups) == 1:
+            return [{"idx": g, "v": HIDDEN}]
+        if ordinal:
+            cands = [groups[j] for j in (pos - 1, pos + 1) if 0 <= j < len(groups)]
+        else:
+            cands = [x for x in groups if x is not g]
+        nonzero = [c for c in cands if total(c) > 0]
+        if nonzero:
+            target = min(nonzero, key=total)
+        elif ordinal and any(total(x) > 0 for x in groups if x is not g):
+            # Προς την πλευρά όπου υπάρχει μη μηδενική ομάδα.
+            left = any(total(x) > 0 for x in groups[:pos])
+            target = groups[pos - 1] if left and pos > 0 else groups[pos + 1]
+        else:
+            # Μόνο μηδενικά γύρω: η μικρή τιμή θα φαινόταν από το σύνολο. Κρύβονται όλα.
+            return [{"idx": [i for x in groups for i in x], "v": HIDDEN}]
+        merged = sorted(g + target)
+        groups = [x for x in groups if x is not g and x is not target]
+        groups.append(merged)
+        groups.sort(key=lambda x: x[0])
+
+
+def cells(groups, n):
+    """Για το CSV: τιμή ανά αρχική στήλη, ή HIDDEN αν η στήλη ενώθηκε/κρύφτηκε."""
+    out = [HIDDEN] * n
+    for g in groups or []:
+        if len(g["idx"]) == 1 and g["v"] != HIDDEN:
+            out[g["idx"][0]] = g["v"]
     return out
 
 
@@ -97,10 +137,38 @@ def totals(programmes, period, declarations):
     return t
 
 
+def age_groups_of(age_groups, ages):
+    """Οι ηλικιακές ομάδες με τιμή, με τη σειρά τους, και οι τιμές τους."""
+    groups = [a for a in age_groups if str(a.pk) in ages]
+    return groups, [ages[str(a.pk)] for a in groups]
+
+
+def _bounds(name):
+    lo, _, hi = name.replace("+", "").partition("–")
+    return lo, (hi or None) if not name.endswith("+") else None
+
+
+def age_label(groups):
+    lo = _bounds(groups[0].name)[0]
+    hi = _bounds(groups[-1].name)[1]
+    return f"{lo}–{hi}" if hi else f"{lo}+"
+
+
 def age_breakdown(age_groups, ages):
-    """[(ηλικιακή ομάδα, τιμή μετά την απόκρυψη)]. Μόνο ομάδες με δηλωμένη τιμή."""
+    """[(ετικέτα, τιμή μετά την προστασία, ομάδες)]. None αν δεν δηλώθηκε ηλικία."""
     if ages is None:
         return None
-    groups = [a for a in age_groups if str(a.pk) in ages]
-    shown = suppress([ages[str(a.pk)] for a in groups])
-    return list(zip(groups, shown))
+    groups, values = age_groups_of(age_groups, ages)
+    out = []
+    for g in protect(values, ordinal=True):
+        members = [groups[i] for i in g["idx"]]
+        out.append((age_label(members), g["v"], members))
+    return out
+
+
+def age_cells(age_groups, ages):
+    """Για το CSV: {id ηλικιακής ομάδας: τιμή ή HIDDEN}."""
+    if ages is None:
+        return {}
+    groups, values = age_groups_of(age_groups, ages)
+    return dict(zip((str(a.pk) for a in groups), cells(protect(values, ordinal=True), len(values))))

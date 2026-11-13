@@ -148,7 +148,7 @@ class DeclarationFlowTests(TestCase):
     def test_no_correction_after_deadline(self):
         self.period.deadline = timezone.localdate() - timedelta(days=1)
         self.period.save()
-        declare(self.p, self.period)
+        declare(self.p, self.period, submitted_at=timezone.now() - timedelta(days=5))
         r = self.step(1)
         self.assertRedirects(r, reverse("programme_home", args=[self.p.pk]))
 
@@ -161,6 +161,23 @@ class DeclarationFlowTests(TestCase):
         self.assertFalse(d.on_time)
         r = self.client.get(reverse("programme_home", args=[self.p.pk]))
         self.assertNotContains(r, "καθυστέρ")
+
+    def test_late_submitter_gets_seven_days_to_correct(self):
+        self.period.deadline = timezone.localdate() - timedelta(days=30)
+        self.period.save()
+        self.fill(open_start=0, new=3, completed=1, withdrawn=0)
+        d = Declaration.objects.get()
+        self.assertEqual(d.editable_until, timezone.localdate() + timedelta(days=7))
+        self.assertEqual(self.step(1).status_code, 200)  # διόρθωση επιτρέπεται
+        d.submitted_at = timezone.now() - timedelta(days=8)
+        d.save()
+        self.assertRedirects(self.step(1), reverse("programme_home", args=[self.p.pk]))
+
+    def test_on_time_submitter_window_is_deadline(self):
+        self.period.deadline = timezone.localdate() + timedelta(days=2)
+        self.period.save()
+        d = declare(self.p, self.period)
+        self.assertEqual(d.editable_until, self.period.deadline)
 
     # --- Περιορισμοί ---
     def test_environmental_programme_not_declarable(self):

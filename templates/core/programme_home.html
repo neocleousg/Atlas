@@ -17,10 +17,10 @@
 <div class="card due done">
   <div class="split"><h2>Δήλωση {{ period.label }}</h2><span class="chip good">✓ Υποβλήθηκε</span></div>
   {% if can_edit %}
-  <p>Ευχαριστούμε. Μπορείτε να τη διορθώσετε μέχρι <b>{{ period.deadline|date:"d/m/Y" }}</b>.</p>
+  <p>Ευχαριστούμε. Μπορείτε να τη διορθώσετε μέχρι <b>{{ current.editable_until|date:"d/m/Y" }}</b>.</p>
   <a class="btn ghost" href="{% url 'declaration' p.pk 1 %}" style="justify-self:start">Διόρθωση δήλωσης</a>
   {% else %}
-  <p>Ευχαριστούμε. Η προθεσμία διόρθωσης έληξε στις {{ period.deadline|date:"d/m/Y" }}.</p>
+  <p>Ευχαριστούμε. Η διόρθωση ήταν δυνατή μέχρι {{ current.editable_until|date:"d/m/Y" }}.</p>
   {% endif %}
 </div>
 {% else %}

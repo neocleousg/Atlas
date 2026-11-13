@@ -63,7 +63,7 @@
     {% if detail.sex %}{% for s in detail.sex %}{{ s.label }} {{ s.v }}{% if not forloop.last %} · {% endif %}{% endfor %}{% else %}φύλο δεν δηλώθηκε{% endif %}
     |
     {% if detail.ages %}{% for a in detail.ages %}{{ a.label }}{% if a.outside %} (εκτός στόχου){% endif %}: {{ a.v }}{% if not forloop.last %} · {% endif %}{% endfor %}{% else %}ηλικία δεν δηλώθηκε{% endif %}.
-    Τιμές κάτω από 5, και όσες θα τις αποκάλυπταν, εμφανίζονται ως «{{ HIDDEN }}».</p>
+    Τιμές κάτω από 5 ενώνονται με διπλανή κατηγορία· «{{ HIDDEN }}» όπου αυτό δεν γίνεται.</p>
   {% if detail.d.note %}<div class="comment" style="margin-top:10px"><b>Σχόλιο φορέα:</b> {{ detail.d.note }}</div>{% endif %}
   {% endif %}
 </div>
@@ -83,8 +83,11 @@
     {% if trend.incomplete %}<p class="small muted" style="margin-top:8px">Όπου λείπουν δηλώσεις, οι στήλες είναι χαμηλότερες γιατί μετράνε λιγότερα προγράμματα, όχι επειδή μειώθηκε η συμμετοχή.</p>{% endif %}
   </div>
   <div class="card chart"><h3>Ποσοστό ολοκλήρωσης</h3><p class="small muted" style="margin:2px 0 10px">Ολοκλήρωσαν ÷ (ολοκλήρωσαν + αποχώρησαν)</p>
-    {% for r in rates %}<div class="hb"><span>{{ r.name }}</span><span class="t"><i style="width:{{ r.v }}%;background:{% if r.v < 60 %}var(--c2){% else %}var(--c1){% endif %}"></i></span><b>{{ r.v }}%</b></div>{% empty %}<p class="muted">Δεν υπάρχουν δηλώσεις.</p>{% endfor %}
-    {% if rates %}<p class="small muted">Κάτω από 60%: πορτοκαλί, ως αφορμή για συζήτηση με τον φορέα.</p>{% endif %}
+    {% for g in rates %}
+      <p class="small" style="font-weight:600;color:var(--ink);margin:{% if forloop.first %}0{% else %}12px{% endif %} 0 6px">{{ g.level }} πρόληψη</p>
+      {% for r in g.items %}<div class="hb"><span>{{ r.name }}</span><span class="t"><i style="width:{{ r.v }}%;background:var(--c1)"></i></span><b>{{ r.v }}%</b></div>{% endfor %}
+    {% empty %}<p class="muted">Δεν υπάρχουν δηλώσεις.</p>{% endfor %}
+    {% if rates %}<p class="small muted">Το ποσοστό εξαρτάται από το επίπεδο πρόληψης. Συγκρίνετε προγράμματα του ίδιου επιπέδου, ως αφορμή για συζήτηση με τον φορέα, όχι ως βαθμολογία.</p>{% endif %}
   </div>
   <div class="card chart"><h3>Νέοι εξυπηρετούμενοι</h3><p class="small muted" style="margin:2px 0 10px">Κατά φύλο και ηλικία</p>
     {% if sex %}
@@ -94,7 +97,7 @@
     {% else %}<p class="muted" style="margin-bottom:12px">Καμία δήλωση με φύλο.</p>{% endif %}
     {% if ages %}
       {% for a in ages %}<div class="hb"><span>{{ a.label }} ετών</span><span class="t"><i style="width:{{ a.w }}%;background:var(--c5)"></i></span><b>{{ a.v }}</b></div>{% endfor %}
-      <p class="small muted">Ηλικία από {{ T.ages_reported }} από {{ T.submitted }} δηλώσεις. «{{ HIDDEN }}» = κρυμμένη μικρή τιμή.</p>
+      <p class="small muted">Ηλικία από {{ T.ages_reported }} από {{ T.submitted }} δηλώσεις. Τιμές κάτω από 5 ενώνονται με διπλανή ομάδα.</p>
     {% else %}<p class="muted">Καμία δήλωση με ηλικία.</p>{% endif %}
   </div>
 </div>

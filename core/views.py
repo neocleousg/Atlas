@@ -13,7 +13,7 @@ from django.views.generic import TemplateView
 from .access import AaekRequiredMixin, OfficerRequiredMixin, is_aaek, officer_programmes
 from .forms import StepNewForm, StepOutcomeForm, StepProfileForm
 from .models import DECLARABLE_LEVELS, AgeGroup, Declaration, District, Period, PreventionLevel, Programme
-from .stats import HIDDEN, age_breakdown, suppress, totals
+from .stats import HIDDEN, age_breakdown, age_cells, cells, protect, totals
 
 STEPS = 4
 DRAFT_TTL_SECONDS = 2 * 60 * 60  # πάνω από 2 ώρες ο χρόνος συμπλήρωσης δεν μετρά (ξεχασμένη καρτέλα)
@@ -63,7 +63,7 @@ class ProgrammeHomeView(OfficerRequiredMixin, TemplateView):
         last = p.declarations.select_related("period").order_by("-period__year", "-period__part").first()
         ctx.update(p=p, period=period, current=current, history=history, last=last,
                    can_declare=p.is_declarable and p.expected_in(period),
-                   can_edit=current is None or period.is_open_for_edits())
+                   can_edit=current is None or current.is_editable())
         return ctx
 
 
@@ -78,8 +78,8 @@ class DeclarationView(OfficerRequiredMixin, View):
         if not (self.p.is_declarable and self.p.expected_in(self.period)):
             raise Http404
         self.existing = self.p.declaration_for(self.period)
-        if self.existing and not self.period.is_open_for_edits():
-            messages.info(request, f"Η προθεσμία διόρθωσης ({self.period.deadline:%d/%m/%Y}) πέρασε.")
+        if self.existing and not self.existing.is_editable():
+            messages.info(request, f"Η δήλωση δεν διορθώνεται πια (μέχρι {self.existing.editable_until:%d/%m/%Y}).")
             return redirect("programme_home", pk=pk)
         if not 1 <= step <= STEPS:
             raise Http404
@@ -236,22 +236,28 @@ class DeclarationView(OfficerRequiredMixin, View):
 SEX_LABELS = ["Αγόρια / άνδρες", "Κορίτσια / γυναίκες", "Άλλο / δεν δηλώθηκε"]
 
 
-def sex_rows(shown):
-    """Γραμμές για το γράφημα φύλου. Αν κάτι κρύφτηκε, δεν δείχνουμε ποσοστά (θα το αποκάλυπταν)."""
-    if shown is None:
+def sex_rows(values):
+    """Γραμμές φύλου μετά την προστασία. Ποσοστά μόνο αν δεν κρύφτηκε τίποτα."""
+    if values is None:
         return None
-    total = sum(v for v in shown if v != HIDDEN)
-    clean = HIDDEN not in shown and total > 0
-    return [{"label": l, "v": v, "pct": round(v * 100 / total) if clean else None, "c": f"var(--c{i + 1})"}
-            for i, (l, v) in enumerate(zip(SEX_LABELS, shown))]
+    groups = protect(values)
+    total = sum(values)
+    clean = all(g["v"] != HIDDEN for g in groups) and total > 0
+    rows = []
+    for g in groups:
+        label = " + ".join(SEX_LABELS[i] if k == 0 else SEX_LABELS[i].split(" / ")[0].lower() for k, i in enumerate(g["idx"]))
+        rows.append({"label": label, "v": g["v"], "pct": round(g["v"] * 100 / total) if clean else None,
+                     "c": f"var(--c{g['idx'][0] + 1})"})
+    return rows
 
 
 def age_rows(breakdown, targets=()):
     if breakdown is None:
         return None
-    top = max([v for _, v in breakdown if v != HIDDEN] + [1])
-    return [{"label": a.name, "v": v, "w": 0 if v == HIDDEN else round(v * 100 / top),
-             "outside": bool(targets) and a.pk not in targets} for a, v in breakdown]
+    top = max([v for _, v, _ in breakdown if v != HIDDEN] + [1])
+    return [{"label": label, "v": v, "w": 0 if v == HIDDEN else round(v * 100 / top),
+             "outside": bool(targets) and not any(m.pk in targets for m in members)}
+            for label, v, members in breakdown]
 
 
 def _cell(v):
@@ -314,7 +320,7 @@ class AaekDashboardView(AaekRequiredMixin, TemplateView):
                 "p": sp,
                 "history": [{"period": per, "d": decl.get(per.pk, {}).get(sp.pk)} for per in periods],
                 "d": sd,
-                "sex": sex_rows(suppress(sd.sex)) if sd else None,
+                "sex": sex_rows(sd.sex) if sd else None,
                 "ages": age_rows(age_breakdown(age_groups, sd.ages), [a.pk for a in sp.age_groups.all()]) if sd else None,
             }
         trend = []
@@ -325,18 +331,33 @@ class AaekDashboardView(AaekRequiredMixin, TemplateView):
             periods=periods, period=period, district=district, level=level,
             districts=District.objects.all(), levels=[(v, l) for v, l in PreventionLevel.choices if v in DECLARABLE_LEVELS],
             T=T, rows=rows, detail=detail, sel=sel,
-            sex=sex_rows(suppress(T.sex)) if T.sex_reported else None,
+            sex=sex_rows(T.sex) if T.sex_reported else None,
             ages=age_rows(age_breakdown(age_groups, T.ages)) if T.ages_reported else None,
             trend=self.trend_chart(trend, T.expected),
-            rates=sorted(
-                [{"name": r["p"].title, "v": r["d"].completion_rate} for r in rows if r["d"] and r["d"].completion_rate is not None],
-                key=lambda x: -x["v"],
-            ),
+            rates=self.rates_by_level(rows),
             comments=[r for r in rows if r["d"] and r["d"].note],
             HIDDEN=HIDDEN,
             query=self.request.GET.urlencode(),
         )
         return ctx
+
+    @staticmethod
+    def rates_by_level(rows):
+        """
+        Ποσοστό ολοκλήρωσης ανά επίπεδο, αλφαβητικά. ΟΧΙ κατάταξη, ΟΧΙ χρώμα για το «κακό»:
+        η ενδεδειγμένη πρόληψη έχει από τη φύση της χαμηλότερο ποσοστό από την καθολική,
+        και η πρόταση λέει «αφορμή για συζήτηση, όχι για έλεγχο».
+        """
+        out = []
+        for value, label in PreventionLevel.choices:
+            items = sorted(
+                ({"name": r["p"].title, "v": r["d"].completion_rate} for r in rows
+                 if r["p"].level == value and r["d"] and r["d"].completion_rate is not None),
+                key=lambda x: x["name"],
+            )
+            if items:
+                out.append({"level": label, "items": items})
+        return out
 
     @staticmethod
     def trend_chart(trend, expected):
@@ -397,8 +418,9 @@ class AaekExportView(AaekDashboardView):
             if not d:
                 w.writerow(base + ["Όχι"] + [""] * (10 + len(age_groups)))
                 continue
-            sex = suppress(d.sex) or ["", "", ""]
-            ages = dict((str(a.pk), v) for a, v in (age_breakdown(age_groups, d.ages) or []))
+            # Ίδια προστασία με την οθόνη: κάθε κελί που ενώθηκε εκεί, εδώ είναι «×».
+            sex = cells(protect(d.sex), 3) if d.sex else ["", "", ""]
+            ages = age_cells(age_groups, d.ages)
             w.writerow(base + ["Ναι", d.open_start, d.new, d.served, d.completed, d.withdrawn, d.open_end,
                                "" if d.completion_rate is None else d.completion_rate] + sex
                        + [ages.get(str(a.pk), "") for a in age_groups])

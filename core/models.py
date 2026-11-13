@@ -5,7 +5,7 @@
 την Εθνική Στρατηγική για την Αντιμετώπιση των Εξαρτήσεων 2021–2028 (σ. 39–41).
 """
 import calendar
-from datetime import date
+from datetime import date, timedelta
 
 from django.conf import settings as django_settings
 from django.core.exceptions import ValidationError
@@ -233,6 +233,9 @@ class Programme(models.Model):
         )
 
 
+LATE_EDIT_DAYS = 7
+
+
 class Declaration(models.Model):
     """
     Δήλωση τετραμηνίας για ένα πρόγραμμα. Μόνο σύνολα, κανένα στοιχείο συμμετεχόντων.
@@ -301,3 +304,16 @@ class Declaration(models.Model):
     @property
     def on_time(self):
         return timezone.localdate(self.submitted_at) <= self.period.deadline
+
+    @property
+    def editable_until(self):
+        """
+        Μέχρι την προθεσμία. Όποιος υπέβαλε αργά έχει κι αυτός LATE_EDIT_DAYS μέρες για διόρθωση,
+        αλλιώς δεν θα μπορούσε να διορθώσει ούτε λάθος που έκανε πριν από ένα λεπτό.
+        """
+        if self.on_time:
+            return self.period.deadline
+        return timezone.localdate(self.submitted_at) + timedelta(days=LATE_EDIT_DAYS)
+
+    def is_editable(self, today=None):
+        return (today or timezone.localdate()) <= self.editable_until
