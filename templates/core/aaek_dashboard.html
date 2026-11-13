@@ -1,0 +1,120 @@
+{% extends "base.html" %}{% load l10n %}
+{% block title %}Πίνακας ΑΑΕΚ{% endblock %}
+{% block content %}
+<div class="head">
+  <div class="eyebrow">Λειτουργός ΑΑΕΚ</div>
+  <h1>Προγράμματα πρόληψης ανά τετραμηνία</h1>
+</div>
+
+<form class="card bar" method="get">
+  <label>Τετραμηνία<select name="per">{% for x in periods %}<option value="{{ x.pk }}"{% if x.pk == period.pk %} selected{% endif %}>{{ x.label }}</option>{% endfor %}</select></label>
+  <label>Επαρχία<select name="dist"><option value="">Όλες</option>{% for d in districts %}<option value="{{ d.pk }}"{% if d.pk == district %} selected{% endif %}>{{ d }}</option>{% endfor %}</select></label>
+  <label>Επίπεδο πρόληψης<select name="lvl"><option value="">Όλα</option>{% for v, l in levels %}<option value="{{ v }}"{% if v == level %} selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+  <button class="btn ghost" type="submit">Εφαρμογή</button>
+  <span class="chip info">Δηλώσεις: {{ T.submitted }} από {{ T.expected }}</span>
+</form>
+
+<div class="kpis">
+  <div class="kpi main"><div class="v">{{ T.served }}</div><div class="l">Εξυπηρετήθηκαν</div></div>
+  <div class="kpi"><div class="v">{{ T.new }}</div><div class="l">Νέοι</div></div>
+  <div class="kpi"><div class="v">{{ T.completed }}</div><div class="l">Ολοκλήρωσαν</div></div>
+  <div class="kpi"><div class="v">{{ T.withdrawn }}</div><div class="l">Αποχώρησαν</div></div>
+  <div class="kpi"><div class="v">{{ T.open_end }}</div><div class="l">Ανοικτές περιπτώσεις τέλους τετραμηνίας</div></div>
+  <div class="kpi"><div class="v">{% if T.rate is None %}—{% else %}{{ T.rate }}%{% endif %}</div><div class="l">Ποσοστό ολοκλήρωσης</div></div>
+</div>
+
+<div>
+  <div class="split" style="margin-bottom:8px"><h2>Ανά πρόγραμμα</h2>
+    <span class="small muted">Πατήστε «Λεπτομέρειες» για όλες τις τετραμηνίες ενός προγράμματος ·
+      <button class="linkbtn" type="button" id="copy">Αντιγραφή για Excel</button> ·
+      <a href="{% url 'aaek_export' %}?per={{ period.pk }}&amp;dist={{ district|default_if_none:'' }}&amp;lvl={{ level }}">Λήψη CSV</a></span></div>
+  <div class="tbl"><table id="tbl">
+    <thead><tr><th>Πρόγραμμα</th><th>Εξυπηρετήθηκαν</th><th>Νέοι</th><th>Ολοκλήρωσαν</th><th>Αποχώρησαν</th><th>Ανοικτές περιπτώσεις</th><th>Ολοκλήρωση</th><th><span class="sr">Λεπτομέρειες</span></th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr{% if r.p.pk == sel %} class="sel"{% endif %}>
+        <td><b>{{ r.p.title }}</b><br><span class="small muted">{{ r.p.organisation }} · {{ r.p.get_level_display }} · {{ r.p.district }}</span></td>
+        {% if r.d %}<td class="num">{{ r.d.served }}</td><td class="num">{{ r.d.new }}</td><td class="num">{{ r.d.completed }}</td><td class="num">{{ r.d.withdrawn }}</td><td class="num">{{ r.d.open_end }}</td><td class="num">{% if r.d.completion_rate is None %}—{% else %}{{ r.d.completion_rate }}%{% endif %}</td>
+        {% else %}<td class="na" colspan="6">Δεν έχει υποβληθεί ακόμα · προθεσμία {{ period.deadline|date:"d/m/Y" }}</td>{% endif %}
+        <td>{% if r.p.pk == sel %}<a class="rowbtn" href="?per={{ period.pk }}&amp;dist={{ district|default_if_none:'' }}&amp;lvl={{ level }}" aria-expanded="true">Απόκρυψη ▴</a>{% else %}<a class="rowbtn" href="?per={{ period.pk }}&amp;dist={{ district|default_if_none:'' }}&amp;lvl={{ level }}&amp;sel={{ r.p.pk }}#detail" aria-expanded="false">Λεπτομέρειες ▾</a>{% endif %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="8" class="na">Κανένα πρόγραμμα για αυτά τα φίλτρα.</td></tr>
+    {% endfor %}
+    </tbody>
+    <tfoot><tr><td>Σύνολο ({{ T.submitted }} δηλώσεις)</td><td class="num">{{ T.served }}</td><td class="num">{{ T.new }}</td><td class="num">{{ T.completed }}</td><td class="num">{{ T.withdrawn }}</td><td class="num">{{ T.open_end }}</td><td class="num">{% if T.rate is None %}—{% else %}{{ T.rate }}%{% endif %}</td><td></td></tr></tfoot>
+  </table></div>
+  {% if T.submitted < T.expected %}<p class="small muted" style="margin-top:6px">Τα σύνολα περιλαμβάνουν μόνο τις δηλώσεις που έχουν υποβληθεί.</p>{% endif %}
+</div>
+
+{% if detail %}
+<div class="card detail" id="detail">
+  <div class="split"><div>
+    <div class="eyebrow">{{ detail.p.organisation }} · {{ detail.p.get_level_display }} · {{ detail.p.setting }} · {{ detail.p.district }}</div>
+    <h2>«{{ detail.p.title }}»: όλες οι τετραμηνίες</h2>
+    <p class="small muted" style="margin-top:4px">Ανοικτές περιπτώσεις από προηγούμενη τετραμηνία: όσοι συνέχιζαν από πριν. Ανοικτές περιπτώσεις τέλους τετραμηνίας: όσοι συνεχίζουν στην επόμενη.</p>
+  </div><a class="btn ghost" href="?per={{ period.pk }}&amp;dist={{ district|default_if_none:'' }}&amp;lvl={{ level }}">Απόκρυψη λεπτομερειών</a></div>
+  <div class="tbl" style="margin-top:12px"><table>
+    <thead><tr><th>Τετραμηνία</th><th>Ανοικτές περιπτώσεις από προηγούμενη τετραμηνία</th><th>Νέοι</th><th>Ολοκλήρωσαν</th><th>Αποχώρησαν</th><th>Ανοικτές περιπτώσεις τέλους τετραμηνίας</th></tr></thead>
+    <tbody>{% for h in detail.history %}<tr><td>{{ h.period.label }}</td>{% if h.d %}<td class="num">{{ h.d.open_start }}</td><td class="num">{{ h.d.new }}</td><td class="num">{{ h.d.completed }}</td><td class="num">{{ h.d.withdrawn }}</td><td class="num">{{ h.d.open_end }}</td>{% else %}<td class="na" colspan="5">Δεν έχει υποβληθεί</td>{% endif %}</tr>{% endfor %}</tbody>
+  </table></div>
+  {% if detail.d %}
+  <p class="small muted" style="margin-top:10px">Νέοι {{ period.label }}:
+    {% if detail.sex %}{% for s in detail.sex %}{{ s.label }} {{ s.v }}{% if not forloop.last %} · {% endif %}{% endfor %}{% else %}φύλο δεν δηλώθηκε{% endif %}
+    |
+    {% if detail.ages %}{% for a in detail.ages %}{{ a.label }}{% if a.outside %} (εκτός στόχου){% endif %}: {{ a.v }}{% if not forloop.last %} · {% endif %}{% endfor %}{% else %}ηλικία δεν δηλώθηκε{% endif %}.
+    Τιμές κάτω από 5, και όσες θα τις αποκάλυπταν, εμφανίζονται ως «{{ HIDDEN }}».</p>
+  {% if detail.d.note %}<div class="comment" style="margin-top:10px"><b>Σχόλιο φορέα:</b> {{ detail.d.note }}</div>{% endif %}
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="charts">
+  <div class="card chart"><h3>Σύγκριση τετραμηνιών</h3><p class="small muted" style="margin:2px 0 10px">Πόσοι εξυπηρετήθηκαν, ολοκλήρωσαν και αποχώρησαν συνολικά, σε κάθε τετραμηνία</p>
+    {% localize off %}{# οι συντεταγμένες SVG θέλουν τελεία, όχι ελληνικό κόμμα #}<svg viewBox="0 0 {{ trend.W }} {{ trend.H }}" role="img" aria-label="Εξέλιξη ανά τετραμηνία">
+      {% for g in trend.grid %}<line x1="{{ trend.L }}" x2="{{ trend.x2 }}" y1="{{ g.y }}" y2="{{ g.y }}" stroke="var(--line)"/><text x="38" y="{{ g.ty }}" text-anchor="end">{{ g.label }}</text>{% endfor %}
+      {% for gr in trend.groups %}
+        {% for b in gr.bars %}<rect x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" fill="{{ b.color }}" rx="2"><title>{{ b.title }}</title></rect>{% endfor %}
+        <text x="{{ gr.cx }}" y="{{ trend.label_y }}" text-anchor="middle"{% if gr.period.pk == period.pk %} class="t-ink"{% endif %}>{{ gr.period.label }}</text>
+        <text x="{{ gr.cx }}" y="{{ trend.label_y2 }}" text-anchor="middle"{% if gr.n < gr.of %} style="fill:var(--copper)"{% endif %}>δηλώσεις {{ gr.n }}/{{ gr.of }}</text>
+      {% endfor %}
+    </svg>{% endlocalize %}
+    <div class="legend">{% for name, color, a in trend.series %}<span><i style="background:{{ color }}"></i>{{ name }}</span>{% endfor %}</div>
+    {% if trend.incomplete %}<p class="small muted" style="margin-top:8px">Όπου λείπουν δηλώσεις, οι στήλες είναι χαμηλότερες γιατί μετράνε λιγότερα προγράμματα, όχι επειδή μειώθηκε η συμμετοχή.</p>{% endif %}
+  </div>
+  <div class="card chart"><h3>Ποσοστό ολοκλήρωσης</h3><p class="small muted" style="margin:2px 0 10px">Ολοκλήρωσαν ÷ (ολοκλήρωσαν + αποχώρησαν)</p>
+    {% for r in rates %}<div class="hb"><span>{{ r.name }}</span><span class="t"><i style="width:{{ r.v }}%;background:{% if r.v < 60 %}var(--c2){% else %}var(--c1){% endif %}"></i></span><b>{{ r.v }}%</b></div>{% empty %}<p class="muted">Δεν υπάρχουν δηλώσεις.</p>{% endfor %}
+    {% if rates %}<p class="small muted">Κάτω από 60%: πορτοκαλί, ως αφορμή για συζήτηση με τον φορέα.</p>{% endif %}
+  </div>
+  <div class="card chart"><h3>Νέοι εξυπηρετούμενοι</h3><p class="small muted" style="margin:2px 0 10px">Κατά φύλο και ηλικία</p>
+    {% if sex %}
+      {% if sex.0.pct is not None %}<div style="display:flex;height:22px;border-radius:6px;overflow:hidden;margin-bottom:6px">{% for s in sex %}<i style="width:{{ s.pct }}%;background:{{ s.c }}"></i>{% endfor %}</div>{% endif %}
+      <div class="legend" style="margin-bottom:6px">{% for s in sex %}<span><i style="background:{{ s.c }}"></i>{{ s.label }} {{ s.v }}{% if s.pct is not None %} ({{ s.pct }}%){% endif %}</span>{% endfor %}</div>
+      <p class="small muted" style="margin-bottom:12px">Φύλο από {{ T.sex_reported }} από {{ T.submitted }} δηλώσεις.</p>
+    {% else %}<p class="muted" style="margin-bottom:12px">Καμία δήλωση με φύλο.</p>{% endif %}
+    {% if ages %}
+      {% for a in ages %}<div class="hb"><span>{{ a.label }} ετών</span><span class="t"><i style="width:{{ a.w }}%;background:var(--c5)"></i></span><b>{{ a.v }}</b></div>{% endfor %}
+      <p class="small muted">Ηλικία από {{ T.ages_reported }} από {{ T.submitted }} δηλώσεις. «{{ HIDDEN }}» = κρυμμένη μικρή τιμή.</p>
+    {% else %}<p class="muted">Καμία δήλωση με ηλικία.</p>{% endif %}
+  </div>
+</div>
+
+<div>
+  <h2 style="margin-bottom:8px">Τι σημειώνουν οι φορείς</h2>
+  <div class="comments">{% for r in comments %}<div class="comment"><b>{{ r.p.title }}</b> <span class="small muted">· {{ r.p.organisation }}</span><br>{{ r.d.note }}</div>{% empty %}<p class="muted">Δεν υπάρχουν σχόλια για αυτή την τετραμηνία.</p>{% endfor %}</div>
+</div>
+
+{% if T.submitted %}
+<p class="small muted">Στόχοι πρότασης · Σ1 εντός προθεσμίας: {{ T.on_time }} από {{ T.submitted }} δηλώσεις · Σ2 διάμεσος χρόνος συμπλήρωσης: {% if T.median_minutes is None %}—{% else %}{{ T.median_minutes }} λεπτά{% endif %}</p>
+{% endif %}
+<div class="toast" id="toast" role="status" hidden></div>
+<script>
+document.getElementById("copy").onclick=function(){
+  var t=document.getElementById("tbl"),toast=document.getElementById("toast");
+  function say(m){toast.textContent=m;toast.hidden=false;setTimeout(function(){toast.hidden=true},3800)}
+  var rows=[].slice.call(t.querySelectorAll("tr")).map(function(r){return [].slice.call(r.children).slice(0,7).map(function(c){return c.innerText.replace(/\n/g," ").trim()}).join("\t")}).join("\n");
+  function fb(){var r=document.createRange();r.selectNode(t);var s=getSelection();s.removeAllRanges();s.addRange(r);say("Ο πίνακας επιλέχθηκε. Πατήστε Ctrl+C για αντιγραφή.")}
+  try{navigator.clipboard.writeText(rows).then(function(){say("Ο πίνακας αντιγράφηκε. Επικολλήστε τον στο Excel.")},fb)}catch(e){fb()}
+};
+</script>
+{% endblock %}

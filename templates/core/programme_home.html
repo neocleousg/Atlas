@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ p.title }}{% endblock %}
+{% block main_class %}narrow{% endblock %}
+{% block content %}
+<div class="head">
+  <a href="{% url 'programme_list' %}" style="justify-self:start">← Άλλο πρόγραμμα</a>
+  <div class="eyebrow">{{ p.organisation }} · Υπεύθυνος: {{ p.officer.get_full_name|default:p.officer.username }}</div>
+  <h1>Πρόγραμμα «{{ p.title }}»</h1>
+  <div class="facts"><span>{{ p.get_level_display }} πρόληψη</span><span>{{ p.setting }}</span><span>{{ p.district }}</span>{% if p.age_groups.all %}<span>{{ p.age_groups.all|join:", " }} ετών</span>{% endif %}</div>
+</div>
+
+{% if not p.is_declarable %}
+<div class="card">Η περιβαλλοντική πρόληψη δεν δηλώνεται ανά τετραμηνία, γιατί δεν υπάρχουν άτομα που ολοκληρώνουν ή αποχωρούν. Ο τρόπος καταγραφής θα συμφωνηθεί με την ΑΑΕΚ.</div>
+{% elif not can_declare %}
+<div class="card">Το πρόγραμμα δηλώνει από την τετραμηνία {{ p.first_period.label }}.</div>
+{% elif current %}
+<div class="card due done">
+  <div class="split"><h2>Δήλωση {{ period.label }}</h2><span class="chip good">✓ Υποβλήθηκε</span></div>
+  {% if can_edit %}
+  <p>Ευχαριστούμε. Μπορείτε να τη διορθώσετε μέχρι <b>{{ period.deadline|date:"d/m/Y" }}</b>.</p>
+  <a class="btn ghost" href="{% url 'declaration' p.pk 1 %}" style="justify-self:start">Διόρθωση δήλωσης</a>
+  {% else %}
+  <p>Ευχαριστούμε. Η προθεσμία διόρθωσης έληξε στις {{ period.deadline|date:"d/m/Y" }}.</p>
+  {% endif %}
+</div>
+{% else %}
+<div class="card due">
+  <div class="split"><h2>Δήλωση {{ period.label }}</h2><span class="chip warn">Εκκρεμεί</span></div>
+  <p>Η τετραμηνία έκλεισε. Η προθεσμία {% if period.is_open_for_edits %}είναι{% else %}ήταν{% endif %} <b>{{ period.deadline|date:"d/m/Y" }}</b>{% if not period.is_open_for_edits %}, αλλά μπορείτε ακόμα να την υποβάλετε{% endif %}. Χρειάζεται περίπου 5 λεπτά.</p>
+  <a class="btn big" href="{% url 'declaration' p.pk 1 %}" style="justify-self:start">Συμπλήρωση δήλωσης</a>
+</div>
+{% endif %}
+
+{% if last %}
+<div class="grid3">
+  <div class="kpi"><div class="v">{{ last.served }}</div><div class="l">Εξυπηρετήθηκαν</div></div>
+  <div class="kpi"><div class="v">{{ last.completed }}</div><div class="l">Ολοκλήρωσαν</div></div>
+  <div class="kpi"><div class="v">{{ last.open_end }}</div><div class="l">Ανοικτές περιπτώσεις σήμερα</div></div>
+  <p class="small muted" style="grid-column:1/-1">Από την τελευταία υποβληθείσα δήλωση ({{ last.period.label }}).</p>
+</div>
+{% endif %}
+
+<div>
+  <div class="split" style="margin-bottom:8px"><h3>Οι δηλώσεις μου</h3><span class="small muted">Τελευταίες τρεις τετραμηνίες</span></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Τετραμηνία</th><th>Νέοι</th><th>Ολοκλήρωσαν</th><th>Αποχώρησαν</th><th>Ανοικτές περιπτώσεις τέλους τετραμηνίας</th><th>Κατάσταση</th></tr></thead>
+    <tbody>
+    {% for h in history %}
+      <tr><td>{{ h.period.label }}</td>
+      {% if h.d %}<td class="num">{{ h.d.new }}</td><td class="num">{{ h.d.completed }}</td><td class="num">{{ h.d.withdrawn }}</td><td class="num">{{ h.d.open_end }}</td><td><span class="chip good">Υποβλήθηκε</span></td>
+      {% elif h.expected %}<td class="na" colspan="4">—</td><td><span class="chip warn">Εκκρεμεί</span></td>
+      {% else %}<td class="na" colspan="4">—</td><td><span class="chip">Δεν αναμενόταν</span></td>{% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% include "core/_definitions.html" %}
+{% endblock %}

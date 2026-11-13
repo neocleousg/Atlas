@@ -1,0 +1,7 @@
+<div class="field">
+  {% if small %}<span class="hint" id="l-{{ f.auto_id }}">{{ f.label }}</span>{{ f.as_widget }}{% else %}
+  <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+  {% if f.help_text %}<span class="hint" id="{{ f.auto_id }}_helptext">{{ f.help_text }}</span>{% endif %}
+  {{ f }}{% endif %}
+  {% for e in f.errors %}<span class="errorlist" style="padding:0">{{ e }}</span>{% endfor %}
+</div>
