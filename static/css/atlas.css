@@ -28,6 +28,7 @@ p{margin:0}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* κεφαλίδα */
+.demobar{background:var(--copper-soft);color:var(--copper);text-align:center;font-size:.88rem;padding:6px 16px}
 .top{background:var(--surface);border-bottom:1px solid var(--line)}
 .top .in{max-width:1060px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px 18px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}

@@ -18,6 +18,10 @@
 
 Τι υποσχεθήκαμε στην ΑΑΕΚ: [docs/PROTASI.md](docs/PROTASI.md). Σειρά υλοποίησης: [docs/SXEDIO.md](docs/SXEDIO.md).
 
+## Online δοκιμαστική εκδοχή (Render)
+
+Βήμα-βήμα οδηγός: [docs/RENDER.md](docs/RENDER.md). Εικονικά δεδομένα, server στην ΕΕ.
+
 ## Δοκιμή σε υπολογιστή Windows (χωρίς τεχνικές γνώσεις)
 
 1. Εγκαταστήστε μία φορά την **Python** από https://www.python.org/downloads/ — στην πρώτη οθόνη τσεκάρετε **«Add python.exe to PATH»**.

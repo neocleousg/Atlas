@@ -2,10 +2,11 @@
 Ρυθμίσεις ΑΤΛΑΣ.
 
 Όλες οι ευαίσθητες τιμές διαβάζονται από μεταβλητές περιβάλλοντος (βλ. .env.example).
-Χωρίς POSTGRES_HOST χρησιμοποιείται SQLite, μόνο για ανάπτυξη και ελέγχους.
+Βάση: DATABASE_URL (π.χ. Render) ή POSTGRES_* (docker-compose). Χωρίς αυτά, SQLite μόνο για ανάπτυξη.
 """
 import os
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -31,6 +32,14 @@ if not SECRET_KEY:
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "")
+
+# Render δίνει μόνο του τη διεύθυνση της εφαρμογής (π.χ. atlas-xyz.onrender.com).
+if RENDER_HOST := os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
+    ALLOWED_HOSTS.append(RENDER_HOST)
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_HOST}")
+
+# Δημόσια εκδοχή με εικονικά δεδομένα: φαίνεται σε κάθε σελίδα, ώστε κανείς να μη βάλει πραγματικά στοιχεία.
+DEMO_MODE = env_bool("ATLAS_DEMO", False)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -67,6 +76,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "core.context_processors.atlas",
             ],
         },
     },
@@ -74,7 +84,25 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-if os.environ.get("POSTGRES_HOST"):
+def database_from_url(url):
+    """postgres://χρήστης:κωδικός@host:port/βάση → ρυθμίσεις Django (χωρίς επιπλέον βιβλιοθήκη)."""
+    u = urlparse(url)
+    if u.scheme not in ("postgres", "postgresql"):
+        raise ImproperlyConfigured("Το DATABASE_URL πρέπει να ξεκινά με postgres://")
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": unquote(u.path.lstrip("/")),
+        "USER": unquote(u.username or ""),
+        "PASSWORD": unquote(u.password or ""),
+        "HOST": u.hostname or "",
+        "PORT": str(u.port or 5432),
+        "CONN_MAX_AGE": 60,
+    }
+
+
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {"default": database_from_url(os.environ["DATABASE_URL"])}
+elif os.environ.get("POSTGRES_HOST"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",

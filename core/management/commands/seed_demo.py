@@ -49,6 +49,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--force", action="store_true", help="Εκτέλεση ακόμα και με DEBUG=0.")
         parser.add_argument("--out", help="Αποθήκευση των κωδικών και σε αρχείο κειμένου (τοπικά).")
+        parser.add_argument("--password", help="Ίδιος κωδικός για όλους τους εικονικούς χρήστες (δεν εμφανίζεται).")
 
     @transaction.atomic
     def handle(self, *args, **opts):
@@ -68,7 +69,7 @@ class Command(BaseCommand):
         ):
             user, _ = User.objects.get_or_create(username=username, defaults={"role": role, "organisation": org})
             user.first_name = first
-            password = secrets.token_urlsafe(12)
+            password = opts.get("password") or secrets.token_urlsafe(12)
             user.set_password(password)
             user.save()
             users[username] = user
@@ -110,6 +111,9 @@ class Command(BaseCommand):
                 )
                 open_ = served - comp - left
 
+        if opts.get("password"):
+            self.stdout.write(self.style.SUCCESS("Εικονικά δεδομένα έτοιμα. Χρήστες: foreas_a, foreas_b, aaek."))
+            return
         self.stdout.write(self.style.SUCCESS("Εικονικά δεδομένα έτοιμα. Κωδικοί (εμφανίζονται μόνο τώρα):"))
         for u, pw in creds:
             self.stdout.write(f"  {u:10s} {pw}")
